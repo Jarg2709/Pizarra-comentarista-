@@ -1,4 +1,4 @@
-from narration.eventos import Evento
+from .eventos import Evento
 
 class Narrador:
     def __init__(self, partido):
