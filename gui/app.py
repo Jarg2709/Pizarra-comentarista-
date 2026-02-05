@@ -1,203 +1,93 @@
 import tkinter as tk
 from tkinter import ttk
 from gui.cancha import Cancha
+
+
 class NarradorGUI:
     def __init__(self, root, narrador):
         self.root = root
         self.narrador = narrador
 
-        # Configuración ventana
-        self.root.title("🎙️ Narrador de Fútbol")
-        self.root.geometry("750x650")
+        self.root.title("Narrador de Fútbol")
+        self.root.geometry("900x650")
         self.root.configure(bg="#1e1e1e")
 
-        self._crear_estilos()
+        self.form_local = tk.StringVar(value="4-4-2")
+        self.form_visita = tk.StringVar(value="4-3-3")
+
         self._crear_widgets()
 
-    # =========================
-    # ESTILOS
-    # =========================
-    def _crear_estilos(self):
-        style = ttk.Style()
-        style.theme_use("clam")
-
-        style.configure(
-            "TButton",
-            font=("Segoe UI", 10),
-            padding=6
-        )
-
-        style.configure(
-            "TLabel",
-            background="#1e1e1e",
-            foreground="white",
-            font=("Segoe UI", 11)
-        )
-
-    # =========================
-    # WIDGETS
-    # =========================
     def _crear_widgets(self):
+        frame = tk.Frame(self.root, bg="#1e1e1e")
+        frame.pack(pady=5)
 
-        # ----- TÍTULO -----
-        lbl_titulo = ttk.Label(
-            self.root,
-            text="Narración del Partido",
-            font=("Segoe UI", 16, "bold")
-        )
-        lbl_titulo.pack(pady=10)
-
-        # ----- INFO PARTIDO -----
-        info = self.narrador.partido.informacion_general()
-        self.lbl_info = ttk.Label(
-            self.root,
-            text=info,
-            justify="center"
-        )
-        self.lbl_info.pack(pady=5)
-
-        # ----- SELECCIÓN DE FORMACIÓN -------
-        frame_formacion = tk.Frame(self.root, bg="#1e1e1e")
-        frame_formacion.pack(pady=5)
-
-        ttk.Label(frame_formacion, text="Fomración:").pack(side="left", padx=5)
-        self.formacion = tk.StringVar(value="4-4-2")
-
-        combo = ttk.Combobox(
-            frame_formacion,
-            textvariable=self.formacion,
+        ttk.Label(frame, text="Local:").grid(row=0, column=0, padx=5)
+        ttk.Combobox(
+            frame,
+            textvariable=self.form_local,
             values=["4-4-2", "4-3-3", "3-5-2"],
-            width=10,
+            width=7,
             state="readonly"
-        )
-        combo.pack(side="left",padx=5)
+        ).grid(row=0, column=1)
+
+        ttk.Label(frame, text="Visitante:").grid(row=0, column=2, padx=5)
+        ttk.Combobox(
+            frame,
+            textvariable=self.form_visita,
+            values=["4-4-2", "4-3-3", "3-5-2"],
+            width=7,
+            state="readonly"
+        ).grid(row=0, column=3)
 
         ttk.Button(
-            frame_formacion,
+            frame,
             text="Aplicar",
-            command=self.aplicar_formacion
-        ).pack(side="left", padx=10)
+            command=self.aplicar_formaciones
+        ).grid(row=0, column=4, padx=10)
 
-
-        # ----- CANCHA -----
-        self.cancha = Cancha(self.root)
-
-        # Dibujar jugadores
-        self._dibujar_jugadores()
-
-        # ----- ÁREA DE NARRACIÓN -----
-        self.texto = tk.Text(
-            self.root,
-            height=8,
-            bg="#2b2b2b",
-            fg="white",
-            font=("Consolas", 10),
-            state="disabled"
-        )
-        self.texto.pack(padx=15, pady=10, fill="x")
-
-        # ----- BOTONES -----
-        frame_botones = tk.Frame(self.root, bg="#1e1e1e")
-        frame_botones.pack(pady=10)
-
-        ttk.Button(
-            frame_botones,
-            text="⚽ Gol Local",
-            command=self.gol_local
-        ).pack(side="left", padx=10)
-
-        ttk.Button(
-            frame_botones,
-            text="🚫 Falta Visitante",
-            command=self.falta_visitante
-        ).pack(side="left", padx=10)
+        self.cancha = Cancha(self.root, on_resize=self.aplicar_formaciones)
 
     # =========================
-    # LÓGICA DE GUI
-    # =========================
-    def _dibujar_jugadores(self):
-        self.aplicar_formacion()
-
-    def escribir(self, mensaje):
-        self.texto.config(state="normal")
-        self.texto.insert("end", mensaje + "\n")
-        self.texto.config(state="disabled")
-        self.texto.see("end")
-
-    # =========================
-    # EVENTOS DEL PARTIDO
-    # =========================
-    def gol_local(self):
-        jugador = self.narrador.partido.equipo_local.jugadores[0]
-        equipo = self.narrador.partido.equipo_local
-
-        evento = self.narrador.gol(23, jugador, equipo)
-        self.escribir(str(evento))
-
-    def falta_visitante(self):
-        jugador = self.narrador.partido.equipo_visitante.jugadores[0]
-
-        evento = self.narrador.falta(35, jugador)
-        self.escribir(str(evento))
-    
-    def calcular_posciones(self, formacion, lado="local"):
-        """
-        Retorna una lista de (x,y) según la formacion
-        """
-        w, h = 500, 300
-        margen_x = 60
-
-        if lado == "local":
-            base_x = margen_x
-            direccion = 1
-        else:
-            base_x = w - margen_x
-            direccion = -1
-
-        formaciones = {
+    def calcular_formacion(self, formacion, lado):
+        esquemas = {
             "4-4-2": [1, 4, 4, 2],
             "4-3-3": [1, 4, 3, 3],
             "3-5-2": [1, 3, 5, 2]
         }
 
-        filas =formaciones[formacion]
+        filas = esquemas[formacion]
         posiciones = []
 
-        for i, cantidad in enumerate(filas):
-            x = base_x + direccion * i * 70
-            for j in range(cantidad):
-                y = (h / (cantidad + 1)) * (j + 1)
-                posiciones.append((x,y))
-        
+        if lado == "local":
+            xs = [0.08, 0.25, 0.45, 0.65]
+        else:
+            xs = [0.92, 0.75, 0.55, 0.35]
+
+        for x, n in zip(xs, filas):
+            for i in range(n):
+                y = (i + 1) / (n + 1)
+                posiciones.append((x, y))
+
         return posiciones
-    
-    def aplicar_formacion(self):
-        # Limpiar cancha
-        self.cancha.canvas.delete("all")
-        self.cancha.dibujar_cancha()
 
-        # Local
-        posiciones_local = self.calcular_posciones(
-            self.formacion.get(), lado="local"
-        )
+    # =========================
+    def aplicar_formaciones(self):
+        local = self.narrador.partido.equipo_local
+        visita = self.narrador.partido.equipo_visitante
 
-        for jugador, (x, y) in zip(
-            self.narrador.partido.equipo_local.jugadores,
-            posiciones_local
-        ):
-            jugador.x = x
-            jugador.y = y
-            self.cancha.dibujar_jugador(jugador, "#1976d2")
+        pos_local = self.calcular_formacion(self.form_local.get(), "local")
+        pos_visita = self.calcular_formacion(self.form_visita.get(), "visitante")
 
-        # Visitante
-        posiciones_visita = self.calcular_posciones(
-            self.formacion.get(), lado="visitante"
-        )
+        for jugador, (nx, ny) in zip(local.jugadores, pos_local):
+            jugador.nx, jugador.ny = nx, ny
+            if not hasattr(jugador, "_grafico"):
+                self.cancha.dibujar_jugador(jugador, "#1976d2")
+            else:
+                self.cancha.mover_jugador(jugador)
 
-        for jugador, (x, y) in zip(
-            self.narrador.partido.equipo_visitante.jugadores,
-            posiciones_visita
-        ):
-            jugador.x = x
-            jugador.y = y
-            self.cancha.dibujar_jugador(jugador, "#d32f2f")
+        for jugador, (nx, ny) in zip(visita.jugadores, pos_visita):
+            jugador.nx, jugador.ny = nx, ny
+            if not hasattr(jugador, "_grafico"):
+                self.cancha.dibujar_jugador(jugador, "#d32f2f")
+            else:
+                self.cancha.mover_jugador(jugador)
