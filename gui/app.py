@@ -56,6 +56,29 @@ class NarradorGUI:
         )
         self.lbl_info.pack(pady=5)
 
+        # ----- SELECCIÓN DE FORMACIÓN -------
+        frame_formacion = tk.Frame(self.root, bg="#1e1e1e")
+        frame_formacion.pack(pady=5)
+
+        ttk.Label(frame_formacion, text="Fomración:").pack(side="left", padx=5)
+        self.formacion = tk.StringVar(value="4-4-2")
+
+        combo = ttk.Combobox(
+            frame_formacion,
+            textvariable=self.formacion,
+            values=["4-4-2", "4-3-3", "3-5-2"],
+            width=10,
+            state="readonly"
+        )
+        combo.pack(side="left",padx=5)
+
+        ttk.Button(
+            frame_formacion,
+            text="Aplicar",
+            command=self.aplicar_formacion
+        ).pack(side="left", padx=10)
+
+
         # ----- CANCHA -----
         self.cancha = Cancha(self.root)
 
@@ -93,12 +116,7 @@ class NarradorGUI:
     # LÓGICA DE GUI
     # =========================
     def _dibujar_jugadores(self):
-        """Dibuja todos los jugadores en la cancha"""
-        for j in self.narrador.partido.equipo_local.jugadores:
-            self.cancha.dibujar_jugador(j, color="#1976d2")  # azul
-
-        for j in self.narrador.partido.equipo_visitante.jugadores:
-            self.cancha.dibujar_jugador(j, color="#d32f2f")  # rojo
+        self.aplicar_formacion()
 
     def escribir(self, mensaje):
         self.texto.config(state="normal")
@@ -121,3 +139,65 @@ class NarradorGUI:
 
         evento = self.narrador.falta(35, jugador)
         self.escribir(str(evento))
+    
+    def calcular_posciones(self, formacion, lado="local"):
+        """
+        Retorna una lista de (x,y) según la formacion
+        """
+        w, h = 500, 300
+        margen_x = 60
+
+        if lado == "local":
+            base_x = margen_x
+            direccion = 1
+        else:
+            base_x = w - margen_x
+            direccion = -1
+
+        formaciones = {
+            "4-4-2": [1, 4, 4, 2],
+            "4-3-3": [1, 4, 3, 3],
+            "3-5-2": [1, 3, 5, 2]
+        }
+
+        filas =formaciones[formacion]
+        posiciones = []
+
+        for i, cantidad in enumerate(filas):
+            x = base_x + direccion * i * 70
+            for j in range(cantidad):
+                y = (h / (cantidad + 1)) * (j + 1)
+                posiciones.append((x,y))
+        
+        return posiciones
+    
+    def aplicar_formacion(self):
+        # Limpiar cancha
+        self.cancha.canvas.delete("all")
+        self.cancha.dibujar_cancha()
+
+        # Local
+        posiciones_local = self.calcular_posciones(
+            self.formacion.get(), lado="local"
+        )
+
+        for jugador, (x, y) in zip(
+            self.narrador.partido.equipo_local.jugadores,
+            posiciones_local
+        ):
+            jugador.x = x
+            jugador.y = y
+            self.cancha.dibujar_jugador(jugador, "#1976d2")
+
+        # Visitante
+        posiciones_visita = self.calcular_posciones(
+            self.formacion.get(), lado="visitante"
+        )
+
+        for jugador, (x, y) in zip(
+            self.narrador.partido.equipo_visitante.jugadores,
+            posiciones_visita
+        ):
+            jugador.x = x
+            jugador.y = y
+            self.cancha.dibujar_jugador(jugador, "#d32f2f")

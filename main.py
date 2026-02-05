@@ -13,9 +13,9 @@ estadio = Estadio("Centenario", "Armenia")
 local = Equipo("Llaneros FC", "José Luis García")
 visitante = Equipo("Deportivo Pereira", "Arturo Reyes")
 
-local.agregar_jugador(Jugador(21, "Francisco Meza", capitan=True))
-visitante.agregar_jugador(Jugador(95, "Jhon Vásquez"))
-
+for i in range(1, 12):
+    local.agregar_jugador(Jugador(i, f"Jugador L{i}"))
+    visitante.agregar_jugador(Jugador(i, f"Jugador V{i}"))
 arbitros = [Arbitro("Ricardo A. Pabón", "Central", "XXX")]
 
 partido = Partido(local, visitante, estadio, arbitros)
