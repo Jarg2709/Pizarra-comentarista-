@@ -12,14 +12,14 @@ ESTILOS_CANCHA = {
     "Pizarra Táctica (Gris)": {"fondo": "#37474F", "lineas": "#FFCA28"}
 }
 
-# --- COLORES DE EQUIPOS (NUEVO) ---
+# --- COLORES DE EQUIPOS ---
 COLORES_EQUIPOS = {
+    "Blanco y Dorado (Llaneros)": {"bg": "#FFFFFF", "fg": "#D4AF37"},
+    "Negro y Dorado (Llaneros)": {"bg": "#1A1A1A", "fg": "#D4AF37"},
     "Celeste / Blanco (Arg)": {"bg": "#4FC3F7", "fg": "black"},
     "Blanco (Madrid)": {"bg": "#FFFFFF", "fg": "black"},
     "Rojo": {"bg": "#E53935", "fg": "white"},
     "Azul Oscuro": {"bg": "#1565C0", "fg": "white"},
     "Amarillo": {"bg": "#FDD835", "fg": "black"},
-    "Negro": {"bg": "#212121", "fg": "white"},
-    "Verde": {"bg": "#43A047", "fg": "white"},
-    "Naranja": {"bg": "#FB8C00", "fg": "white"}
+    "Verde": {"bg": "#43A047", "fg": "white"}
 }
