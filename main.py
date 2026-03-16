@@ -1,6 +1,7 @@
 import os
 import ctypes 
 from datetime import datetime
+from tkinter import filedialog # NUEVO IMPORT PARA GUARDAR IMAGEN
 import customtkinter as ctk
 from src.componentes.cancha_widget import CanchaWidget
 from src.utils.constantes import *
@@ -15,10 +16,8 @@ class AppNarrador(ctk.CTk):
         
         self.title("Narrador Pro - FPC 2026")
         self.centrar_y_poner_logo(self, 1100, 750)
-        
         self.db = GestorEquipos()
 
-        # --- Variables del Cronómetro ---
         self.segundos = 0
         self.cronometro_activo = False
 
@@ -47,7 +46,7 @@ class AppNarrador(ctk.CTk):
         
         directorio_actual = os.path.dirname(os.path.abspath(__file__))
         ruta_icono = os.path.join(directorio_actual, "assets", "icono.ico")
-        try: ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('narrador.pro.v18')
+        try: ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('narrador.pro.v19')
         except: pass
         if os.path.exists(ruta_icono):
             ventana.after(10, lambda: ventana.iconbitmap(ruta_icono))
@@ -66,7 +65,22 @@ class AppNarrador(ctk.CTk):
 
         ctk.CTkLabel(self.scroll_panel, text="Control Táctico FPC", font=("Arial", 20, "bold")).pack(pady=(10, 5))
         
-        # --- NUEVO: SECCIÓN DE CRONÓMETRO ---
+        # --- HERRAMIENTAS DE PIZARRA (NUEVO) ---
+        frame_herramientas = ctk.CTkFrame(self.scroll_panel, fg_color="#1A1A1A", corner_radius=10)
+        frame_herramientas.pack(fill="x", pady=(0, 15), padx=10)
+        
+        ctk.CTkLabel(frame_herramientas, text="🛠️ HERRAMIENTAS", font=("Arial", 11, "bold")).pack(pady=(5,0))
+        
+        self.modo_var = ctk.StringVar(value="mover")
+        ctk.CTkRadioButton(frame_herramientas, text="🤚 Mover/Sustituir", variable=self.modo_var, value="mover", command=self.cambiar_modo_cancha).pack(pady=5, anchor="w", padx=20)
+        ctk.CTkRadioButton(frame_herramientas, text="🖍️ Dibujar Flechas", variable=self.modo_var, value="dibujar", command=self.cambiar_modo_cancha).pack(pady=5, anchor="w", padx=20)
+        
+        btn_frame = ctk.CTkFrame(frame_herramientas, fg_color="transparent")
+        btn_frame.pack(fill="x", pady=(5, 10), padx=10)
+        ctk.CTkButton(btn_frame, text="🗑️ Limpiar", width=80, fg_color="#555555", hover_color="#333333", command=self.mi_cancha.limpiar_trazos).pack(side="left", padx=2, expand=True)
+        ctk.CTkButton(btn_frame, text="📸 Exportar", width=80, fg_color="#FBC02D", text_color="black", hover_color="#F9A825", command=self.guardar_imagen).pack(side="right", padx=2, expand=True)
+
+        # --- CRONÓMETRO ---
         frame_crono = ctk.CTkFrame(self.scroll_panel, fg_color="#1A1A1A", corner_radius=10)
         frame_crono.pack(fill="x", pady=(0, 15), padx=10)
         
@@ -78,13 +92,11 @@ class AppNarrador(ctk.CTk):
         
         self.btn_play = ctk.CTkButton(frame_btn_crono, text="▶️", width=40, fg_color="#2E7D32", hover_color="#1B5E20", command=self.toggle_cronometro)
         self.btn_play.pack(side="left", padx=5)
-        
         ctk.CTkButton(frame_btn_crono, text="🔄", width=40, fg_color="#D32F2F", hover_color="#B71C1C", command=self.reset_cronometro).pack(side="left", padx=5)
         
-        # --- BOTONES DE CONFIGURACIÓN ---
+        # --- CONFIGURACIÓN ---
         frame_top_btns = ctk.CTkFrame(self.scroll_panel, fg_color="transparent")
         frame_top_btns.pack(fill="x", padx=10, pady=5)
-        
         ctk.CTkButton(frame_top_btns, text="⚙️ Equipos", width=120, fg_color="#1976D2", hover_color="#1565C0", font=("Arial", 12, "bold"), command=self.abrir_editor_equipos).pack(side="left", expand=True, padx=2)
         ctk.CTkButton(frame_top_btns, text="🛠️ Ajustes", width=100, fg_color="#757575", hover_color="#616161", font=("Arial", 12, "bold"), command=self.abrir_configuracion).pack(side="right", expand=True, padx=2)
 
@@ -105,34 +117,29 @@ class AppNarrador(ctk.CTk):
         
         ctk.CTkFrame(self.scroll_panel, height=2, fg_color="gray").pack(fill="x", pady=10, padx=15)
 
-        # --- EQUIPO LOCAL ---
-        ctk.CTkLabel(self.scroll_panel, text="⬅️ EQUIPO LOCAL ⬅️", font=("Arial", 12, "bold")).pack()
+        # --- EQUIPOS Y LISTAS (Simplificado visualmente) ---
         lista_equipos = list(self.db.equipos.keys())
         
+        ctk.CTkLabel(self.scroll_panel, text="⬅️ EQUIPO LOCAL ⬅️", font=("Arial", 12, "bold")).pack()
         self.combo_equipo_local = ctk.CTkComboBox(self.scroll_panel, values=lista_equipos, command=self.cargar_equipo_local, state="readonly")
         self.combo_equipo_local.set("LLANEROS FC" if "LLANEROS FC" in lista_equipos else lista_equipos[0])
         self.combo_equipo_local.pack(pady=5, padx=15, fill="x")
-        
         self.combo_color_local = ctk.CTkComboBox(self.scroll_panel, values=list(COLORES_EQUIPOS.keys()), command=self.actualizar_todo, state="readonly")
         self.combo_color_local.set("Blanco y Dorado (Llaneros)")
         self.combo_color_local.pack(pady=5, padx=15, fill="x")
-
         self.combo_formacion_local = ctk.CTkComboBox(self.scroll_panel, values=["4-4-2", "4-3-3", "4-2-3-1", "3-5-2"], command=self.actualizar_todo, state="readonly")
         self.combo_formacion_local.set("4-2-3-1")
         self.combo_formacion_local.pack(pady=5, padx=15, fill="x")
 
         ctk.CTkButton(self.scroll_panel, text="⚽ Cambiar Lados", fg_color="#FBC02D", hover_color="#F9A825", text_color="black", font=("Arial", 12, "bold"), command=self.intercambiar_lados).pack(pady=15, padx=15, fill="x")
 
-        # --- EQUIPO VISITA ---
         ctk.CTkLabel(self.scroll_panel, text="➡️ EQUIPO VISITA ➡️", font=("Arial", 12, "bold")).pack()
         self.combo_equipo_visita = ctk.CTkComboBox(self.scroll_panel, values=lista_equipos, command=self.cargar_equipo_visita, state="readonly")
         self.combo_equipo_visita.set("MILLONARIOS FC" if "MILLONARIOS FC" in lista_equipos else lista_equipos[-1])
         self.combo_equipo_visita.pack(pady=5, padx=15, fill="x")
-        
         self.combo_color_visita = ctk.CTkComboBox(self.scroll_panel, values=list(COLORES_EQUIPOS.keys()), command=self.actualizar_todo, state="readonly")
         self.combo_color_visita.set("Azul (Millonarios)")
         self.combo_color_visita.pack(pady=5, padx=15, fill="x")
-
         self.combo_formacion_visita = ctk.CTkComboBox(self.scroll_panel, values=["4-4-2", "4-3-3", "4-2-3-1", "3-5-2"], command=self.actualizar_todo, state="readonly")
         self.combo_formacion_visita.set("4-3-3")
         self.combo_formacion_visita.pack(pady=5, padx=15, fill="x")
@@ -141,8 +148,6 @@ class AppNarrador(ctk.CTk):
         
         # --- EVENTOS ---
         ctk.CTkFrame(self.scroll_panel, height=2, fg_color="gray").pack(fill="x", pady=10, padx=15)
-        ctk.CTkLabel(self.scroll_panel, text="📝 REGISTRO DE EVENTOS", font=("Arial", 12, "bold")).pack()
-        
         self.caja_eventos = ctk.CTkTextbox(self.scroll_panel, height=120, font=("Consolas", 11), fg_color="#1A1A1A")
         self.caja_eventos.pack(pady=5, padx=15, fill="x")
         self.caja_eventos.configure(state="disabled")
@@ -150,6 +155,25 @@ class AppNarrador(ctk.CTk):
         self.cargar_equipo_local(self.combo_equipo_local.get())
         self.cargar_equipo_visita(self.combo_equipo_visita.get())
         self.registrar_evento("¡Análisis táctico iniciado!")
+
+    # =======================================================
+    # HERRAMIENTAS NUEVAS
+    # =======================================================
+    def cambiar_modo_cancha(self):
+        self.mi_cancha.cambiar_modo(self.modo_var.get())
+        if self.modo_var.get() == "dibujar":
+            self.registrar_evento("🖍️ Modo Dibujo activado")
+            
+    def guardar_imagen(self):
+        ruta = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG Image", "*.png")], title="Guardar Pizarra")
+        if ruta:
+            # Aseguramos que la interfaz se refresque antes de la foto
+            self.update_idletasks()
+            exito = self.mi_cancha.exportar_imagen(ruta)
+            if exito:
+                self.registrar_evento(f"📸 Foto guardada exitosamente")
+            else:
+                self.registrar_evento(f"❌ Error al guardar foto")
 
     # =======================================================
     # LÓGICA DEL CRONÓMETRO
@@ -169,7 +193,7 @@ class AppNarrador(ctk.CTk):
         if self.cronometro_activo:
             self.segundos += 1
             self.lbl_crono.configure(text=self._formatear_tiempo())
-            self.after(1000, self.actualizar_tiempo) # Llama a esta función cada 1000ms (1 seg)
+            self.after(1000, self.actualizar_tiempo)
 
     def reset_cronometro(self):
         self.cronometro_activo = False
@@ -179,13 +203,9 @@ class AppNarrador(ctk.CTk):
         self.registrar_evento("⏱️ Reloj reiniciado")
 
     def _formatear_tiempo(self):
-        m = self.segundos // 60
-        s = self.segundos % 60
+        m, s = self.segundos // 60, self.segundos % 60
         return f"{m:02d}:{s:02d}"
 
-    # =======================================================
-    # NUEVO: MODAL DE CONFIGURACIÓN / AJUSTES
-    # =======================================================
     def abrir_configuracion(self):
         ventana_cfg = ctk.CTkToplevel(self)
         ventana_cfg.title("🛠️ Ajustes de Interfaz")
@@ -194,35 +214,23 @@ class AppNarrador(ctk.CTk):
         ventana_cfg.grab_set()
 
         ctk.CTkLabel(ventana_cfg, text="Configuración Visual", font=("Arial", 16, "bold")).pack(pady=(20, 10))
+        ctk.CTkLabel(ventana_cfg, text="Escala (Tamaño general de la App):").pack(pady=(10, 5))
         
-        ctk.CTkLabel(ventana_cfg, text="Escala (Tamaño de letras y botones):").pack(pady=(10, 5))
-        
-        # Opciones de escalado de CustomTkinter
-        opciones_escala = {
-            "Pequeño (80%)": "0.8",
-            "Normal (100%)": "1.0",
-            "Grande (110%)": "1.1",
-            "Extra Grande (120%)": "1.2"
-        }
-        
+        opciones_escala = {"Pequeño (80%)": "0.8", "Normal (100%)": "1.0", "Grande (110%)": "1.1", "Extra Grande (120%)": "1.2"}
         combo_escala = ctk.CTkComboBox(ventana_cfg, values=list(opciones_escala.keys()), state="readonly")
-        combo_escala.set("Normal (100%)") # Valor por defecto visual
+        combo_escala.set("Normal (100%)")
         combo_escala.pack(pady=5, padx=40, fill="x")
 
         def aplicar_ajustes():
             seleccion = combo_escala.get()
-            escala_float = float(opciones_escala[seleccion])
-            
-            # Cambia dinámicamente el tamaño de TODO el programa
-            ctk.set_widget_scaling(escala_float)
-            
+            ctk.set_widget_scaling(float(opciones_escala[seleccion]))
             self.registrar_evento(f"⚙️ Escala cambiada a {seleccion}")
             ventana_cfg.destroy()
 
         ctk.CTkButton(ventana_cfg, text="Aplicar Cambios", fg_color="#43A047", hover_color="#2E7D32", command=aplicar_ajustes).pack(pady=20)
 
     # =======================================================
-    # SUSTITUCIONES INTERACTIVAS
+    # SUSTITUCIONES INTERACTIVAS Y ACTUALIZACIÓN
     # =======================================================
     def abrir_menu_sustitucion(self, tipo_equipo, indice_titular):
         equipo_data = self.data_local if tipo_equipo == "local" else self.data_visita
@@ -240,9 +248,7 @@ class AppNarrador(ctk.CTk):
         
         ctk.CTkLabel(ventana_sub, text="⬇️ SALE:", font=("Arial", 12, "bold"), text_color="gray").pack(pady=(15,0))
         ctk.CTkLabel(ventana_sub, text=f"{titular.get('numero')} - {titular.get('nombre')}", font=("Arial", 18, "bold"), text_color="#E53935").pack(pady=(0,15))
-        
         ctk.CTkFrame(ventana_sub, height=2, fg_color="#333333").pack(fill="x", padx=20)
-        
         ctk.CTkLabel(ventana_sub, text="⬆️ SELECCIONA QUIÉN ENTRA:", font=("Arial", 12, "bold"), text_color="#43A047").pack(pady=(15,5))
         
         scroll_subs = ctk.CTkScrollableFrame(ventana_sub, fg_color="transparent")
@@ -256,29 +262,19 @@ class AppNarrador(ctk.CTk):
     def ejecutar_sustitucion(self, tipo_equipo, idx_titular, idx_suplente, ventana):
         equipo_data = self.data_local if tipo_equipo == "local" else self.data_visita
         nombre_equipo = self.combo_equipo_local.get() if tipo_equipo == "local" else self.combo_equipo_visita.get()
-        
         titular_sale = equipo_data["jugadores"][idx_titular]
         suplente_entra = equipo_data["suplentes"][idx_suplente]
         
         equipo_data["jugadores"][idx_titular] = suplente_entra
         equipo_data["suplentes"][idx_suplente] = titular_sale
         
-        minuto_juego = self._formatear_tiempo()
-        self.registrar_evento(f"[{minuto_juego}] 🔄 CAMBIO {nombre_equipo}:\n  🔴 Sale: {titular_sale['nombre']}\n  🟢 Entra: {suplente_entra['nombre']}")
-        
+        self.registrar_evento(f"[{self._formatear_tiempo()}] 🔄 CAMBIO {nombre_equipo}:\n  🔴 Sale: {titular_sale['nombre']}\n  🟢 Entra: {suplente_entra['nombre']}")
         ventana.destroy()
         self.actualizar_todo() 
 
-    # =======================================================
-    # CARGA Y ACTUALIZACIÓN
-    # =======================================================
     def cargar_equipo_local(self, nombre_equipo):
         datos = self.db.equipos.get(nombre_equipo, {})
-        self.data_local = {
-            "jugadores": list(datos.get("jugadores", [])),
-            "suplentes": list(datos.get("suplentes", [])),
-            "tecnico": datos.get("tecnico", "Por definir")
-        }
+        self.data_local = {"jugadores": list(datos.get("jugadores", [])), "suplentes": list(datos.get("suplentes", [])), "tecnico": datos.get("tecnico", "Por definir")}
         self.combo_color_local.set(datos.get("color", "Blanco y Dorado (Llaneros)"))
         self.entry_estadio.delete(0, 'end')
         self.entry_estadio.insert(0, datos.get("estadio", "ESTADIO DESCONOCIDO"))
@@ -286,11 +282,7 @@ class AppNarrador(ctk.CTk):
 
     def cargar_equipo_visita(self, nombre_equipo):
         datos = self.db.equipos.get(nombre_equipo, {})
-        self.data_visita = {
-            "jugadores": list(datos.get("jugadores", [])),
-            "suplentes": list(datos.get("suplentes", [])),
-            "tecnico": datos.get("tecnico", "Por definir")
-        }
+        self.data_visita = {"jugadores": list(datos.get("jugadores", [])), "suplentes": list(datos.get("suplentes", [])), "tecnico": datos.get("tecnico", "Por definir")}
         self.combo_color_visita.set(datos.get("color", "Azul (Millonarios)"))
         self.actualizar_todo()
 
@@ -309,79 +301,57 @@ class AppNarrador(ctk.CTk):
         scroll = ctk.CTkScrollableFrame(ventana)
         scroll.pack(fill="both", expand=True, padx=20, pady=10)
         
-        entry_nombre = ctk.CTkEntry(scroll, placeholder_text="Nombre del Equipo")
-        entry_nombre.pack(fill="x", pady=2)
-        entry_estadio_ed = ctk.CTkEntry(scroll, placeholder_text="Estadio Local")
-        entry_estadio_ed.pack(fill="x", pady=2)
-        entry_dt = ctk.CTkEntry(scroll, placeholder_text="Director Técnico")
-        entry_dt.pack(fill="x", pady=2)
-        combo_color = ctk.CTkComboBox(scroll, values=list(COLORES_EQUIPOS.keys()), state="readonly")
-        combo_color.pack(fill="x", pady=5)
+        entry_nombre = ctk.CTkEntry(scroll, placeholder_text="Nombre del Equipo"); entry_nombre.pack(fill="x", pady=2)
+        entry_estadio_ed = ctk.CTkEntry(scroll, placeholder_text="Estadio Local"); entry_estadio_ed.pack(fill="x", pady=2)
+        entry_dt = ctk.CTkEntry(scroll, placeholder_text="Director Técnico"); entry_dt.pack(fill="x", pady=2)
+        combo_color = ctk.CTkComboBox(scroll, values=list(COLORES_EQUIPOS.keys()), state="readonly"); combo_color.pack(fill="x", pady=5)
         
         ctk.CTkLabel(scroll, text="11 Titulares:", font=("Arial", 12, "bold")).pack(pady=(10,0))
         entradas_jugadores = []
         for i in range(11):
-            row = ctk.CTkFrame(scroll, fg_color="transparent")
-            row.pack(fill="x", pady=1)
-            num_e = ctk.CTkEntry(row, width=40, placeholder_text="#")
-            num_e.pack(side="left", padx=(0, 5))
-            nom_e = ctk.CTkEntry(row, placeholder_text=f"Titular {i+1}")
-            nom_e.pack(side="left", fill="x", expand=True)
-            entradas_jugadores.append((num_e, nom_e))
+            row = ctk.CTkFrame(scroll, fg_color="transparent"); row.pack(fill="x", pady=1)
+            nu = ctk.CTkEntry(row, width=40, placeholder_text="#"); nu.pack(side="left", padx=(0, 5))
+            no = ctk.CTkEntry(row, placeholder_text=f"Titular {i+1}"); no.pack(side="left", fill="x", expand=True)
+            entradas_jugadores.append((nu, no))
             
         ctk.CTkLabel(scroll, text="7 Suplentes:", font=("Arial", 12, "bold")).pack(pady=(10,0))
         entradas_suplentes = []
         for i in range(7):
-            row = ctk.CTkFrame(scroll, fg_color="transparent")
-            row.pack(fill="x", pady=1)
-            num_e = ctk.CTkEntry(row, width=40, placeholder_text="#")
-            num_e.pack(side="left", padx=(0, 5))
-            nom_e = ctk.CTkEntry(row, placeholder_text=f"Suplente {i+1}")
-            nom_e.pack(side="left", fill="x", expand=True)
-            entradas_suplentes.append((num_e, nom_e))
+            row = ctk.CTkFrame(scroll, fg_color="transparent"); row.pack(fill="x", pady=1)
+            nu = ctk.CTkEntry(row, width=40, placeholder_text="#"); nu.pack(side="left", padx=(0, 5))
+            no = ctk.CTkEntry(row, placeholder_text=f"Suplente {i+1}"); no.pack(side="left", fill="x", expand=True)
+            entradas_suplentes.append((nu, no))
             
-        def cargar_datos_al_formulario(seleccion):
-            if seleccion in self.db.equipos:
-                d = self.db.equipos[seleccion]
-                entry_nombre.delete(0, 'end'); entry_nombre.insert(0, seleccion)
+        def cargar_datos_al_formulario(sel):
+            if sel in self.db.equipos:
+                d = self.db.equipos[sel]
+                entry_nombre.delete(0, 'end'); entry_nombre.insert(0, sel)
                 entry_estadio_ed.delete(0, 'end'); entry_estadio_ed.insert(0, d.get("estadio", ""))
                 entry_dt.delete(0, 'end'); entry_dt.insert(0, d.get("tecnico", ""))
                 combo_color.set(d.get("color", "Blanco y Dorado (Llaneros)"))
-                
                 for i, j_data in enumerate(d.get("jugadores", [])):
-                    if i < len(entradas_jugadores):
-                        entradas_jugadores[i][0].delete(0, 'end'); entradas_jugadores[i][0].insert(0, str(j_data.get("numero", "")))
-                        entradas_jugadores[i][1].delete(0, 'end'); entradas_jugadores[i][1].insert(0, str(j_data.get("nombre", "")))
-                        
-                for num_e, nom_e in entradas_suplentes: num_e.delete(0, 'end'); nom_e.delete(0, 'end')
+                    if i < 11: entradas_jugadores[i][0].delete(0, 'end'); entradas_jugadores[i][0].insert(0, str(j_data.get("numero", ""))); entradas_jugadores[i][1].delete(0, 'end'); entradas_jugadores[i][1].insert(0, str(j_data.get("nombre", "")))
+                for nu, no in entradas_suplentes: nu.delete(0, 'end'); no.delete(0, 'end')
                 for i, j_data in enumerate(d.get("suplentes", [])):
-                    if i < len(entradas_suplentes):
-                        entradas_suplentes[i][0].insert(0, str(j_data.get("numero", "")))
-                        entradas_suplentes[i][1].insert(0, str(j_data.get("nombre", "")))
+                    if i < 7: entradas_suplentes[i][0].insert(0, str(j_data.get("numero", ""))); entradas_suplentes[i][1].insert(0, str(j_data.get("nombre", "")))
                     
         def limpiar_formulario():
-            entry_nombre.delete(0, 'end'); entry_estadio_ed.delete(0, 'end'); entry_dt.delete(0, 'end')
-            combo_color.set("Blanco y Dorado (Llaneros)")
-            for num_e, nom_e in entradas_jugadores + entradas_suplentes:
-                num_e.delete(0, 'end'); nom_e.delete(0, 'end')
+            entry_nombre.delete(0, 'end'); entry_estadio_ed.delete(0, 'end'); entry_dt.delete(0, 'end'); combo_color.set("Blanco y Dorado (Llaneros)")
+            for nu, no in entradas_jugadores + entradas_suplentes: nu.delete(0, 'end'); no.delete(0, 'end')
             entry_nombre.focus()
             
         ctk.CTkButton(frame_top, text="✨ Nuevo", fg_color="#FBC02D", text_color="black", hover_color="#F9A825", command=limpiar_formulario).pack(side="right", padx=10)
-        combo_editar.configure(command=cargar_datos_al_formulario)
-        cargar_datos_al_formulario(combo_editar.get())
+        combo_editar.configure(command=cargar_datos_al_formulario); cargar_datos_al_formulario(combo_editar.get())
         
         def guardar_equipo():
             nom = entry_nombre.get().upper().strip()
             if not nom: return
-            j_nuevos = [{"numero": num_e.get().strip() or "-", "nombre": nom_e.get().strip() or "Jugador"} for num_e, nom_e in entradas_jugadores]
-            s_nuevos = [{"numero": num_e.get().strip(), "nombre": nom_e.get().strip()} for num_e, nom_e in entradas_suplentes if nom_e.get().strip()]
-            self.db.equipos[nom] = {
-                "color": combo_color.get(), "estadio": entry_estadio_ed.get().upper().strip(),
-                "tecnico": entry_dt.get().strip(), "jugadores": j_nuevos, "suplentes": s_nuevos
-            }
+            j_nuevos = [{"numero": nu.get().strip() or "-", "nombre": no.get().strip() or "Jugador"} for nu, no in entradas_jugadores]
+            s_nuevos = [{"numero": nu.get().strip(), "nombre": no.get().strip()} for nu, no in entradas_suplentes if no.get().strip()]
+            self.db.equipos[nom] = {"color": combo_color.get(), "estadio": entry_estadio_ed.get().upper().strip(), "tecnico": entry_dt.get().strip(), "jugadores": j_nuevos, "suplentes": s_nuevos}
             self.db.guardar_datos(self.db.equipos)
-            lista_nueva = list(self.db.equipos.keys())
-            self.combo_equipo_local.configure(values=lista_nueva); self.combo_equipo_visita.configure(values=lista_nueva)
+            ln = list(self.db.equipos.keys())
+            self.combo_equipo_local.configure(values=ln); self.combo_equipo_visita.configure(values=ln)
             self.combo_equipo_local.set(nom); self.cargar_equipo_local(nom)
             self.registrar_evento(f"DB Actualizada: {nom}")
             ventana.destroy()
@@ -390,13 +360,8 @@ class AppNarrador(ctk.CTk):
 
     def intercambiar_lados(self):
         eq_t, col_t, form_t, dt_t = self.combo_equipo_local.get(), self.combo_color_local.get(), self.combo_formacion_local.get(), self.data_local
-        
-        self.combo_equipo_local.set(self.combo_equipo_visita.get()); self.combo_color_local.set(self.combo_color_visita.get())
-        self.combo_formacion_local.set(self.combo_formacion_visita.get()); self.data_local = self.data_visita
-        
-        self.combo_equipo_visita.set(eq_t); self.combo_color_visita.set(col_t)
-        self.combo_formacion_visita.set(form_t); self.data_visita = dt_t
-        
+        self.combo_equipo_local.set(self.combo_equipo_visita.get()); self.combo_color_local.set(self.combo_color_visita.get()); self.combo_formacion_local.set(self.combo_formacion_visita.get()); self.data_local = self.data_visita
+        self.combo_equipo_visita.set(eq_t); self.combo_color_visita.set(col_t); self.combo_formacion_visita.set(form_t); self.data_visita = dt_t
         self.registrar_evento("⇅ Intercambio de campos")
         self.actualizar_todo()
 
@@ -405,12 +370,8 @@ class AppNarrador(ctk.CTk):
 
     def actualizar_todo(self, *args):
         self.mi_cancha.actualizar_entorno(self.combo_competicion.get(), self.entry_estadio.get().upper(), self.combo_equipo_local.get(), self.combo_equipo_visita.get())
-        
-        if self.combo_formacion_local.get() != "Seleccionar":
-            self.mi_cancha.actualizar_datos("local", self.combo_formacion_local.get(), self.data_local, self.combo_color_local.get())
-            
-        if self.combo_formacion_visita.get() != "Seleccionar":
-            self.mi_cancha.actualizar_datos("visita", self.combo_formacion_visita.get(), self.data_visita, self.combo_color_visita.get())
+        if self.combo_formacion_local.get() != "Seleccionar": self.mi_cancha.actualizar_datos("local", self.combo_formacion_local.get(), self.data_local, self.combo_color_local.get())
+        if self.combo_formacion_visita.get() != "Seleccionar": self.mi_cancha.actualizar_datos("visita", self.combo_formacion_visita.get(), self.data_visita, self.combo_color_visita.get())
 
 if __name__ == "__main__":
     app = AppNarrador()
