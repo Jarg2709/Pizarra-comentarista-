@@ -4,7 +4,7 @@ from datetime import datetime
 from tkinter import filedialog 
 import customtkinter as ctk
 from src.componentes.cancha_widget import CanchaWidget
-from src.utils.constantes import *
+from src.utils.constantes import COLOR_FONDO_APP, COLOR_PANEL, COLOR_TEXTO_SEC, COLOR_ACENTO_AZUL, COLOR_ACENTO_VERDE, COLOR_ACENTO_ROJO, ESTILOS_CANCHA, COLORES_EQUIPOS
 from src.logica.gestor_equipos import GestorEquipos
 
 ctk.set_appearance_mode("Dark")
@@ -12,7 +12,7 @@ ctk.set_default_color_theme("blue")
 
 class AppNarrador(ctk.CTk):
     def __init__(self):
-        super().__init__()
+        ctk.CTk.__init__(self)
         
         self.title("Narrador Pro - FPC 2026")
         self.configure(fg_color=COLOR_FONDO_APP)
@@ -21,6 +21,8 @@ class AppNarrador(ctk.CTk):
 
         self.segundos = 0
         self.cronometro_activo = False
+        self.goles_local = 0
+        self.goles_visita = 0
         
         self.data_local = {"jugadores": [], "suplentes": [], "tecnico": ""}
         self.data_visita = {"jugadores": [], "suplentes": [], "tecnico": ""}
@@ -53,6 +55,9 @@ class AppNarrador(ctk.CTk):
         ctk.CTkLabel(self.frame_log, text="📝 LIVE TICKETS / EVENTOS", font=("Arial", 11, "bold"), text_color=COLOR_TEXTO_SEC).pack(anchor="w", padx=15, pady=(10, 0))
         self.caja_eventos = ctk.CTkTextbox(self.frame_log, font=("Consolas", 11), fg_color=COLOR_FONDO_APP, text_color="#A9A9B5")
         self.caja_eventos.pack(fill="both", expand=True, padx=15, pady=(5, 15))
+        self.caja_eventos.tag_config("gol", foreground="#4CAF50")
+        self.caja_eventos.tag_config("cambio", foreground="#FFEB3B")
+        self.caja_eventos.tag_config("alerta", foreground="#F44336")
         self.caja_eventos.configure(state="disabled")
 
         self.construir_panel()
@@ -72,11 +77,14 @@ class AppNarrador(ctk.CTk):
             except: pass
             ventana.after(50, lambda: ventana.iconbitmap(ruta_icono))
 
-    def registrar_evento(self, mensaje):
+    def registrar_evento(self, mensaje, tag=None):
         hora = datetime.now().strftime("%H:%M:%S")
         texto = f"[{hora}] {mensaje}\n"
         self.caja_eventos.configure(state="normal")
-        self.caja_eventos.insert("end", texto)
+        if tag:
+            self.caja_eventos.insert("end", texto, tag)
+        else:
+            self.caja_eventos.insert("end", texto)
         self.caja_eventos.see("end")
         self.caja_eventos.configure(state="disabled")
 
@@ -93,15 +101,37 @@ class AppNarrador(ctk.CTk):
 
         ctk.CTkLabel(scroll_panel, text="Control Táctico FPC", font=("Arial", 20, "bold")).pack(pady=(5, 15))
 
-        # --- 1. CRONÓMETRO ---
-        card_crono = self.crear_tarjeta(scroll_panel, "⏱️ TIEMPO EN VIVO")
+        # --- 1. CRONÓMETRO Y MARCADOR ---
+        card_crono = self.crear_tarjeta(scroll_panel, "⏱️ TIEMPO Y MARCADOR")
         self.lbl_crono = ctk.CTkLabel(card_crono, text="00:00", font=("Consolas", 36, "bold"), text_color=COLOR_ACENTO_VERDE)
         self.lbl_crono.pack(pady=(0, 5))
+        
         frame_btn_crono = ctk.CTkFrame(card_crono, fg_color="transparent")
-        frame_btn_crono.pack(pady=(0, 15))
+        frame_btn_crono.pack(pady=(0, 10))
         self.btn_play = ctk.CTkButton(frame_btn_crono, text="▶️", width=50, fg_color="#2E7D32", hover_color="#1B5E20", command=self.toggle_cronometro)
         self.btn_play.pack(side="left", padx=5)
         ctk.CTkButton(frame_btn_crono, text="🔄", width=50, fg_color=COLOR_ACENTO_ROJO, hover_color="#C62828", command=self.reset_cronometro).pack(side="left", padx=5)
+
+        # MARCADOR
+        self.frame_marcador = ctk.CTkFrame(card_crono, fg_color=COLOR_FONDO_APP, corner_radius=8)
+        self.frame_marcador.pack(fill="x", padx=15, pady=(0, 10))
+        self.frame_marcador.grid_columnconfigure((0, 2), weight=1)
+        self.frame_marcador.grid_columnconfigure(1, weight=0)
+
+        self.lbl_goles_local = ctk.CTkLabel(self.frame_marcador, text="0", font=("Arial", 28, "bold"), text_color="white")
+        self.lbl_goles_local.grid(row=0, column=0, pady=5)
+        ctk.CTkLabel(self.frame_marcador, text="-", font=("Arial", 28, "bold"), text_color=COLOR_TEXTO_SEC).grid(row=0, column=1)
+        self.lbl_goles_visita = ctk.CTkLabel(self.frame_marcador, text="0", font=("Arial", 28, "bold"), text_color="white")
+        self.lbl_goles_visita.grid(row=0, column=2, pady=5)
+
+        frame_controles_goles = ctk.CTkFrame(self.frame_marcador, fg_color="transparent")
+        frame_controles_goles.grid(row=1, column=0, columnspan=3, pady=(0, 10))
+        
+        ctk.CTkButton(frame_controles_goles, text="+ L", width=40, height=24, fg_color="#1B5E20", hover_color="#2E7D32", font=("Arial", 11, "bold"), command=lambda: self.ajustar_gol('local', 1)).pack(side="left", padx=2)
+        ctk.CTkButton(frame_controles_goles, text="- L", width=40, height=24, fg_color="#B71C1C", hover_color="#D32F2F", font=("Arial", 11, "bold"), command=lambda: self.ajustar_gol('local', -1)).pack(side="left", padx=(2, 10))
+        
+        ctk.CTkButton(frame_controles_goles, text="+ V", width=40, height=24, fg_color="#1B5E20", hover_color="#2E7D32", font=("Arial", 11, "bold"), command=lambda: self.ajustar_gol('visita', 1)).pack(side="left", padx=2)
+        ctk.CTkButton(frame_controles_goles, text="- V", width=40, height=24, fg_color="#B71C1C", hover_color="#D32F2F", font=("Arial", 11, "bold"), command=lambda: self.ajustar_gol('visita', -1)).pack(side="left", padx=2)
 
         # --- 2. ENTORNO DEL PARTIDO ---
         card_entorno = self.crear_tarjeta(scroll_panel, "🏟️ ENTORNO DEL PARTIDO")
@@ -158,10 +188,10 @@ class AppNarrador(ctk.CTk):
         # Corrección del empaquetado (Grid 50/50) para evitar que se corten a la derecha
         btn_frame_herr = ctk.CTkFrame(card_herramientas, fg_color="transparent")
         btn_frame_herr.pack(fill="x", pady=(0, 15), padx=10)
-        btn_frame_herr.grid_columnconfigure(0, weight=1)
-        btn_frame_herr.grid_columnconfigure(1, weight=1)
-        ctk.CTkButton(btn_frame_herr, text="🗑️ Limpiar", fg_color="#4F5268", hover_color="#3A3C4D", command=self.mi_cancha.limpiar_trazos).grid(row=0, column=0, padx=5, sticky="ew")
-        ctk.CTkButton(btn_frame_herr, text="📸 Exportar", fg_color="#FBC02D", text_color="black", hover_color="#F9A825", command=self.guardar_imagen).grid(row=0, column=1, padx=5, sticky="ew")
+        btn_frame_herr.grid_columnconfigure((0, 1, 2), weight=1)
+        ctk.CTkButton(btn_frame_herr, text="↩️", fg_color="#4F5268", hover_color="#3A3C4D", width=50, command=self.deshacer_accion).grid(row=0, column=0, padx=2, sticky="ew")
+        ctk.CTkButton(btn_frame_herr, text="🗑️", fg_color="#4F5268", hover_color="#3A3C4D", width=50, command=self.mi_cancha.limpiar_trazos).grid(row=0, column=1, padx=2, sticky="ew")
+        ctk.CTkButton(btn_frame_herr, text="📸", fg_color="#FBC02D", text_color="black", hover_color="#F9A825", width=50, command=self.guardar_imagen).grid(row=0, column=2, padx=2, sticky="ew")
 
         # --- 7. AJUSTES (GLOBAL) ---
         card_main = self.crear_tarjeta(scroll_panel, "⚙️ CONFIGURACIÓN GLOBAL")
@@ -180,6 +210,21 @@ class AppNarrador(ctk.CTk):
         self.registrar_evento("✓ Interfaz reorganizada y botones ajustados.")
 
     # ================= FUNCIONES ================= 
+    def ajustar_gol(self, equipo, cantidad):
+        if equipo == "local":
+            self.goles_local = max(0, self.goles_local + cantidad)
+            self.lbl_goles_local.configure(text=str(self.goles_local))
+            if cantidad > 0: self.registrar_evento(f"⚽ ¡GOL LOCAL! ({self.combo_equipo_local.get()}) Marcador: {self.goles_local} - {self.goles_visita}", tag="gol")
+        else:
+            self.goles_visita = max(0, self.goles_visita + cantidad)
+            self.lbl_goles_visita.configure(text=str(self.goles_visita))
+            if cantidad > 0: self.registrar_evento(f"⚽ ¡GOL VISITANTE! ({self.combo_equipo_visita.get()}) Marcador: {self.goles_local} - {self.goles_visita}", tag="gol")
+
+    def deshacer_accion(self):
+        exito = self.mi_cancha.deshacer_trazo()
+        if exito:
+            self.registrar_evento("↩️ Trazo deshecho")
+
     def actualizar_tamano_jugadores(self, valor):
         self.mi_cancha.cambiar_escala_jugadores(valor)
 
@@ -290,7 +335,7 @@ class AppNarrador(ctk.CTk):
         equipo_data["jugadores"][idx_titular] = suplente_entra
         equipo_data["suplentes"][idx_suplente] = titular_sale
         
-        self.registrar_evento(f"🔄 CAMBIO ({nombre_equipo}): Sale {titular_sale['nombre']} | Entra {suplente_entra['nombre']}")
+        self.registrar_evento(f"🔄 CAMBIO ({nombre_equipo}): Sale {titular_sale['nombre']} | Entra {suplente_entra['nombre']}", tag="cambio")
         ventana.destroy()
         self.actualizar_todo() 
 
@@ -404,6 +449,12 @@ class AppNarrador(ctk.CTk):
         self.combo_color_visita.set(col_t)
         self.combo_formacion_visita.set(form_t)
         self.data_visita = dt_t
+        goles_t = self.goles_local
+        self.goles_local = self.goles_visita
+        self.goles_visita = goles_t
+        self.lbl_goles_local.configure(text=str(self.goles_local))
+        self.lbl_goles_visita.configure(text=str(self.goles_visita))
+        
         self.registrar_evento("⇅ Lados de la cancha intercambiados")
         self.actualizar_todo()
 

@@ -1,12 +1,12 @@
 import customtkinter as ctk
 import tkinter as tk
 from PIL import ImageGrab 
-from src.utils.constantes import *
+from src.utils.constantes import COLOR_FONDO_APP, COLOR_PANEL, COLOR_TEXTO_SEC, COLOR_ACENTO_AZUL, ESTILOS_CANCHA, RADIO_JUGADOR
 from src.logica.formaciones import GestorFormaciones
 
 class CanchaWidget(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
-        super().__init__(master, fg_color="transparent", **kwargs)
+        ctk.CTkFrame.__init__(self, master=master, fg_color="transparent", **kwargs)
         
         estilo = ESTILOS_CANCHA["Pasto Clásico (Verde)"]
         self.color_fondo = estilo["fondo"]
@@ -59,13 +59,14 @@ class CanchaWidget(ctk.CTkFrame):
         # --- VARIABLES INDEPENDIENTES DE ESCALA ---
         self.escala_jugadores = 1.0  # Para la camiseta
         self.escala_textos = 1.0     # Para las letras
+        self.historial_trazos = []
 
         self.modo_interaccion = "mover" 
-        self.item_arrastrado = None
-        self.linea_actual = None
+        self.item_arrastrado = ""
+        self.linea_actual = 0
         self.start_x = self.start_y = 0
         self.last_x = self.last_y = 0
-        self.on_click_jugador = None
+        self.on_click_jugador = lambda tipo, indice: None
         
         self.canvas.bind("<Configure>", self.al_redimensionar)
         self.canvas.bind("<ButtonPress-1>", self._on_press)
@@ -81,6 +82,14 @@ class CanchaWidget(ctk.CTkFrame):
 
     def limpiar_trazos(self):
         self.canvas.delete("trazo")
+        self.historial_trazos.clear()
+
+    def deshacer_trazo(self):
+        if self.historial_trazos:
+            ultimo = self.historial_trazos.pop()
+            self.canvas.delete(ultimo)
+            return True
+        return False
 
     def _on_press(self, event):
         self.start_x, self.start_y = event.x, event.y
@@ -108,12 +117,17 @@ class CanchaWidget(ctk.CTkFrame):
     def _on_release(self, event):
         if self.modo_interaccion == "mover" and self.item_arrastrado:
             distancia = abs(event.x - self.start_x) + abs(event.y - self.start_y)
-            if distancia < 5 and callable(self.on_click_jugador):
-                _, tipo, indice = self.item_arrastrado.split("_")
-                self.on_click_jugador(tipo, int(indice))
-            self.item_arrastrado = None
+            if distancia < 5 and self.on_click_jugador:
+                try:
+                    _, tipo, indice = self.item_arrastrado.split("_")
+                    self.on_click_jugador(tipo, int(indice))
+                except ValueError:
+                    pass
+            self.item_arrastrado = ""
         elif self.modo_interaccion == "dibujar":
-            self.linea_actual = None
+            if self.linea_actual:
+                self.historial_trazos.append(self.linea_actual)
+            self.linea_actual = 0
 
     def exportar_imagen(self, ruta_archivo):
         x = self.winfo_rootx()
